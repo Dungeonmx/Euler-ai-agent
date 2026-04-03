@@ -1,0 +1,34 @@
+# ==============================================================================
+# DIVIServer — Configuración Central
+# ==============================================================================
+
+server:
+  host: "0.0.0.0"
+  port: 8080
+
+llm:
+  base_url: "http://localhost:8000/v1"
+  api_key: "not-needed"
+  model: "LFM2-2.6B-Exp"
+  temperature: 0.5
+
+embeddings:
+  base_url: "http://localhost:8001/v1"
+  api_key: "not-needed"
+  model: "nomic-embed-text-v2-moe.Q8_0"
+
+database:
+  host: "localhost"
+  port: 5432
+  user: "postgres"
+  password: "postgres"
+  name: "postgres"
+
+chat:
+  session_timeout_minutes: 30
+  eviction_interval_minutes: 5
+
+rag:
+  chunk_size: 512
+  chunk_overlap: 50
+  top_k: 5

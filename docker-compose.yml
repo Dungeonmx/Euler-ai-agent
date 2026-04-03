@@ -1,0 +1,86 @@
+services:
+  # -------------------------------------------------------------------------
+  # LLM principal — llama.cpp
+  # -------------------------------------------------------------------------
+  llamacpp:
+    image: ghcr.io/ggml-org/llama.cpp:server-vulkan
+    environment:
+      - LLAMA_ARG_MODEL=/models/LFM2-2.6B-Exp-Q8_0.gguf
+    ports:
+      - "8000:8080"
+    volumes:
+      - ./.models:/models
+    devices:
+      - /dev/dri:/dev/dri
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+
+  # -------------------------------------------------------------------------
+  # Embeddings — llama.cpp
+  # -------------------------------------------------------------------------
+  llamacpp-embeddings:
+    image: ghcr.io/ggml-org/llama.cpp:server-vulkan
+    environment:
+      - LLAMA_ARG_MODEL=/models/nomic-embed-text-v2-moe.Q8_0.gguf
+      - LLAMA_ARG_EMBEDDINGS=true
+    ports:
+      - "8001:8080"
+    volumes:
+      - ./.models:/models
+    devices:
+      - /dev/dri:/dev/dri
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+
+  # -------------------------------------------------------------------------
+  # PostgreSQL + pgvector
+  # -------------------------------------------------------------------------
+  postgresql:
+    image: pgvector/pgvector:pg17
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+  # -------------------------------------------------------------------------
+  # Aplicación FastAPI — DIVIServer
+  # -------------------------------------------------------------------------
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - LLM_BASE_URL=http://llamacpp:8080/v1
+      - EMBEDDINGS_BASE_URL=http://llamacpp-embeddings:8080/v1
+      - DATABASE_HOST=postgresql
+    depends_on:
+      llamacpp:
+        condition: service_healthy
+      llamacpp-embeddings:
+        condition: service_healthy
+      postgresql:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
